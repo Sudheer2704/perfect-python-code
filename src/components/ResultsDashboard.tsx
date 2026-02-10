@@ -98,7 +98,7 @@ export default function ResultsDashboard({ result }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Cost Breakdown */}
         <Card className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-bold font-['Space_Grotestring'] text-foreground mb-4">💰 Cost Breakdown</h3>
+          <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">💰 Cost Breakdown</h3>
           <div className="flex items-center gap-6">
             <div className="w-36 h-36">
               <ResponsiveContainer>
