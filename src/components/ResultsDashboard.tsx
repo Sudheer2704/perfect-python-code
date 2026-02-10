@@ -1,22 +1,32 @@
 import { Card } from '@/components/ui/card';
-import { Users, Package, IndianRupee, CalendarDays, HardHat, Hammer, Wrench, Paintbrush, Zap, Droplets, Eye } from 'lucide-react';
+import { Users, Package, IndianRupee, CalendarDays, HardHat, Hammer, Wrench, Paintbrush, Zap, Droplets, Eye, AlertTriangle, TrendingUp } from 'lucide-react';
 import type { ProjectResult } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/calculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 interface Props {
   result: ProjectResult;
 }
 
-const COST_COLORS = ['hsl(25, 95%, 53%)', 'hsl(168, 70%, 40%)', 'hsl(220, 16%, 45%)'];
+const COST_COLORS = ['hsl(25, 95%, 53%)', 'hsl(168, 70%, 40%)', 'hsl(220, 16%, 45%)', 'hsl(0, 70%, 50%)'];
+
+const INTENSITY_COLORS: Record<string, string> = {
+  Low: 'bg-green-100 text-green-800',
+  Medium: 'bg-yellow-100 text-yellow-800',
+  High: 'bg-orange-100 text-orange-800',
+  Peak: 'bg-red-100 text-red-800',
+};
 
 export default function ResultsDashboard({ result }: Props) {
-  const { workers, totalWorkers, totalLaborDays, materials, cost, timeline } = result;
+  const { workers, totalWorkers, totalLaborDays, materials, cost, timeline, weeklySchedule, resourceIntensity, costAnalysis, speedFactor, isAccelerated } = result;
 
   const costData = [
     { name: 'Labor', value: cost.labor },
     { name: 'Materials', value: cost.materials },
     { name: 'Overhead', value: cost.overhead },
+    { name: 'Contingency', value: cost.contingency },
   ];
 
   const workerData = [
@@ -34,12 +44,23 @@ export default function ResultsDashboard({ result }: Props) {
 
   return (
     <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+      {/* Acceleration Notice */}
+      {isAccelerated && (
+        <Card className="border-primary/50 bg-primary/5 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-foreground text-sm">Accelerated Timeline Active</p>
+            <p className="text-xs text-muted-foreground">Speed factor: {speedFactor.toFixed(1)}x — Workforce scaled up, material wastage increased by {((speedFactor - 1) * 5).toFixed(1)}%</p>
+          </div>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SummaryCard icon={<Users className="w-5 h-5" />} label="Total Workers" value={totalWorkers.toString()} />
         <SummaryCard icon={<CalendarDays className="w-5 h-5" />} label="Total Days" value={`${timeline.days}`} />
         <SummaryCard icon={<IndianRupee className="w-5 h-5" />} label="Total Cost" value={formatCurrency(cost.total)} />
-        <SummaryCard icon={<Package className="w-5 h-5" />} label="Labor Days" value={totalLaborDays.toLocaleString()} />
+        <SummaryCard icon={<TrendingUp className="w-5 h-5" />} label="Cost/Sq.Yard" value={formatCurrency(costAnalysis.costPerSqYard)} />
       </div>
 
       {/* Worker Breakdown */}
@@ -56,11 +77,28 @@ export default function ResultsDashboard({ result }: Props) {
         </div>
       </Card>
 
-      {/* Cost & Timeline */}
+      {/* Resource Intensity */}
+      <Card className="glass-card rounded-xl p-6">
+        <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">⚡ Resource Intensity</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {resourceIntensity.map(r => (
+            <div key={r.phase} className="bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-foreground truncate mr-2">{r.phase.split('&')[0].trim()}</span>
+                <Badge variant="secondary" className={`text-[10px] shrink-0 ${INTENSITY_COLORS[r.intensity]}`}>{r.intensity}</Badge>
+              </div>
+              <div className="text-lg font-bold text-foreground">{r.workersPerDay}</div>
+              <div className="text-xs text-muted-foreground">workers/day</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Cost & Timeline row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Cost Breakdown */}
         <Card className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">💰 Cost Breakdown</h3>
+          <h3 className="text-lg font-bold font-['Space_Grotestring'] text-foreground mb-4">💰 Cost Breakdown</h3>
           <div className="flex items-center gap-6">
             <div className="w-36 h-36">
               <ResponsiveContainer>
@@ -112,7 +150,75 @@ export default function ResultsDashboard({ result }: Props) {
         </Card>
       </div>
 
-      {/* Materials */}
+      {/* Detailed Material Cost Table (Scenario 3) */}
+      <Card className="glass-card rounded-xl p-6">
+        <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">📊 Material Cost Analysis</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">Cost / Sq. Yard</div>
+            <div className="text-lg font-bold text-foreground">{formatCurrency(costAnalysis.costPerSqYard)}</div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">Cost / Sq. Ft</div>
+            <div className="text-lg font-bold text-foreground">{formatCurrency(costAnalysis.costPerSqFt)}</div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">Labor Cost / Day</div>
+            <div className="text-lg font-bold text-foreground">{formatCurrency(costAnalysis.laborCostPerDay)}</div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Material</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead className="text-right">Rate (₹)</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {costAnalysis.materialCostBreakdown.map(m => (
+                <TableRow key={m.item}>
+                  <TableCell className="font-medium">{m.item}</TableCell>
+                  <TableCell>{m.qty}</TableCell>
+                  <TableCell className="text-right">{m.rate.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-semibold">{formatCurrency(m.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* Weekly Schedule (Scenario 2) */}
+      <Card className="glass-card rounded-xl p-6">
+        <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">🗓️ Weekly Construction Schedule</h3>
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Week</TableHead>
+                <TableHead>Phase</TableHead>
+                <TableHead>Key Activities</TableHead>
+                <TableHead className="text-right">Workers</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weeklySchedule.map(w => (
+                <TableRow key={w.week}>
+                  <TableCell className="font-bold text-primary">W{w.week}</TableCell>
+                  <TableCell className="text-sm">{w.phase}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{w.keyActivities.join(', ')}</TableCell>
+                  <TableCell className="text-right font-semibold">{w.workersNeeded}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* Materials Summary */}
       <Card className="glass-card rounded-xl p-6">
         <h3 className="text-lg font-bold font-['Space_Grotesk'] text-foreground mb-4">🧱 Material Requirements</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
